@@ -71,6 +71,24 @@ button.secondary {
   color: var(--danger);
 }
 
+#creds-btn.secondary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+#creds-output {
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  max-height: 8rem;
+  overflow-y: auto;
+}
+
 /* Author-origin `display` rules above otherwise beat the UA default
    `[hidden] { display: none }`, regardless of specificity - so the
    `hidden` attribute set by app.js would silently do nothing. */

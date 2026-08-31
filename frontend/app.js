@@ -80,6 +80,7 @@ async function refreshStatus() {
   el("launch-btn").hidden = status.state === "running";
   el("launch-btn").disabled = status.state === "pending";
   el("open-link").hidden = !status.ready;
+  el("creds-btn").hidden = !status.ready;
   el("stop-btn").hidden = status.state === "stopped";
 
   if (status.ready) {
@@ -110,6 +111,22 @@ el("launch-btn").addEventListener("click", async () => {
   el("state-text").textContent = "Starting instance…";
   await apiCall("/launch", "POST");
   startPolling();
+});
+
+el("creds-btn").addEventListener("click", async () => {
+  el("creds-btn").disabled = true;
+  el("creds-btn").textContent = "Fetching…";
+  el("creds-output").hidden = false;
+  el("creds-output").textContent = "Asking the instance for its BloodHound admin credentials (a few seconds)…";
+  try {
+    const { output, error } = await apiCall("/credentials");
+    el("creds-output").textContent = output || error || "No response.";
+  } catch (e) {
+    el("creds-output").textContent = "Failed to fetch credentials: " + e.message;
+  } finally {
+    el("creds-btn").disabled = false;
+    el("creds-btn").textContent = "Show BloodHound credentials";
+  }
 });
 
 el("stop-btn").addEventListener("click", async () => {

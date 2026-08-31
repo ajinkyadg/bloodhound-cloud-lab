@@ -20,7 +20,7 @@ locals {
   }
 
   # Scoped CloudWatch Logs statement, one per function name.
-  log_statement = { for name in ["launch", "status", "heartbeat", "stop", "idle-check"] : name => {
+  log_statement = { for name in ["launch", "status", "heartbeat", "stop", "idle-check", "credentials"] : name => {
     Effect   = "Allow"
     Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
     Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-${name}*:*"
@@ -212,6 +212,52 @@ resource "aws_lambda_function" "idle_check" {
   timeout          = 10
   filename         = data.archive_file.idle_check.output_path
   source_code_hash = data.archive_file.idle_check.output_base64sha256
+  environment { variables = local.common_env }
+}
+
+# ================= credentials =================
+resource "aws_iam_role" "credentials" {
+  name               = "${var.project_name}-credentials-role"
+  assume_role_policy = local.lambda_assume_role_policy
+}
+
+resource "aws_iam_role_policy" "credentials" {
+  name = "${var.project_name}-credentials-policy"
+  role = aws_iam_role.credentials.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = ["ssm:SendCommand"]
+        Resource = [
+          local.instance_arn,
+          "arn:aws:ssm:${data.aws_region.current.name}::document/AWS-RunShellScript",
+        ]
+      },
+      # GetCommandInvocation doesn't support resource-level restriction (AWS
+      # limitation, same as the ec2:Describe* actions elsewhere in this file).
+      { Effect = "Allow", Action = ["ssm:GetCommandInvocation"], Resource = "*" },
+      local.log_statement["credentials"],
+    ]
+  })
+}
+
+data "archive_file" "credentials" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/credentials"
+  output_path = "${path.module}/build/credentials.zip"
+}
+
+resource "aws_lambda_function" "credentials" {
+  function_name    = "${var.project_name}-credentials"
+  role             = aws_iam_role.credentials.arn
+  handler          = "handler.handler"
+  runtime          = "python3.12"
+  timeout          = 25
+  filename         = data.archive_file.credentials.output_path
+  source_code_hash = data.archive_file.credentials.output_base64sha256
   environment { variables = local.common_env }
 }
 

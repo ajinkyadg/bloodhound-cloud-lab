@@ -32,8 +32,9 @@ locals {
   routes = {
     launch    = { method = "POST", path = "/launch", fn = aws_lambda_function.launch }
     status    = { method = "GET", path = "/status", fn = aws_lambda_function.status }
-    heartbeat = { method = "POST", path = "/heartbeat", fn = aws_lambda_function.heartbeat }
-    stop      = { method = "POST", path = "/stop", fn = aws_lambda_function.stop }
+    heartbeat   = { method = "POST", path = "/heartbeat", fn = aws_lambda_function.heartbeat }
+    stop        = { method = "POST", path = "/stop", fn = aws_lambda_function.stop }
+    credentials = { method = "GET", path = "/credentials", fn = aws_lambda_function.credentials }
   }
 }
 
