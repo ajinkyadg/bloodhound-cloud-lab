@@ -70,3 +70,10 @@ button.secondary {
   border: 1px solid var(--danger);
   color: var(--danger);
 }
+
+/* Author-origin `display` rules above otherwise beat the UA default
+   `[hidden] { display: none }`, regardless of specificity - so the
+   `hidden` attribute set by app.js would silently do nothing. */
+[hidden] {
+  display: none !important;
+}
