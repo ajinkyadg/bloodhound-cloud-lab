@@ -1,4 +1,8 @@
+# A browser connecting to a bare IP (no domain) sends no SNI, so `tls internal`
+# (which keys certificate generation off SNI) fails with a TLS internal_error.
+# generate-cert.sh (run on every boot, see user_data.sh.tftpl) writes a static
+# self-signed cert with the instance's current public IP as a SAN instead.
 :${bloodhound_port} {
-	tls internal
+	tls /tls/cert.pem /tls/key.pem
 	reverse_proxy bloodhound:8080
 }

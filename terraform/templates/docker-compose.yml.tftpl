@@ -1,8 +1,6 @@
 # NOTE: verify this against the current upstream compose file before your first deploy:
 # https://github.com/SpecterOps/BloodHound/blob/main/examples/docker-compose/docker-compose.yml
 # Image tags and env var names have moved before; this was correct as of early 2026.
-version: "3.8"
-
 services:
   app-db:
     image: docker.io/library/postgres:16
@@ -43,6 +41,7 @@ services:
       - "${bloodhound_port}:${bloodhound_port}"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./tls:/tls
     depends_on:
       - bloodhound
     restart: unless-stopped
