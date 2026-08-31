@@ -6,16 +6,23 @@
 set -euxo pipefail
 
 # --- Find and mount the data EBS volume (idempotent: safe on every first boot) ---
+# aws_volume_attachment.data is a separate Terraform resource from the instance,
+# so it can still be attaching when cloud-init reaches this point on a fresh
+# instance - poll instead of failing on the first miss.
 ROOT_DEV=$(findmnt -n -o SOURCE / | sed -E 's/p?[0-9]+$//')
 DATA_DEV=""
-for d in /dev/nvme?n1; do
-  if [ "$d" != "$ROOT_DEV" ]; then
-    DATA_DEV="$d"
-  fi
+for i in $(seq 1 30); do
+  for d in /dev/nvme?n1; do
+    if [ "$d" != "$ROOT_DEV" ] && [ -e "$d" ]; then
+      DATA_DEV="$d"
+    fi
+  done
+  [ -n "$DATA_DEV" ] && break
+  sleep 2
 done
 
 if [ -z "$DATA_DEV" ]; then
-  echo "Could not find data EBS device, aborting" >&2
+  echo "Could not find data EBS device after waiting 60s, aborting" >&2
   exit 1
 fi
 
