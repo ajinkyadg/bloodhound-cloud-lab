@@ -1,0 +1,68 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CoreInfra",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:*",
+        "lambda:*",
+        "apigateway:*",
+        "cognito-idp:*",
+        "s3:*",
+        "cloudfront:*",
+        "dynamodb:*",
+        "budgets:*",
+        "events:*",
+        "logs:*",
+        "ssm:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "PassLambdaAndEc2Roles",
+      "Effect": "Allow",
+      "Action": ["iam:PassRole"],
+      "Resource": "arn:aws:iam::*:role/crte-bloodhound-*"
+    },
+    {
+      "Sid": "ManageOwnRolesOnly",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:CreateInstanceProfile",
+        "iam:DeleteInstanceProfile",
+        "iam:GetInstanceProfile",
+        "iam:AddRoleToInstanceProfile",
+        "iam:RemoveRoleFromInstanceProfile",
+        "iam:ListInstanceProfilesForRole",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies"
+      ],
+      "Resource": "arn:aws:iam::*:role/crte-bloodhound-*"
+    },
+    {
+      "Sid": "ManageOwnInstanceProfilesOnly",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateInstanceProfile",
+        "iam:DeleteInstanceProfile",
+        "iam:GetInstanceProfile",
+        "iam:AddRoleToInstanceProfile",
+        "iam:RemoveRoleFromInstanceProfile",
+        "iam:TagInstanceProfile",
+        "iam:UntagInstanceProfile"
+      ],
+      "Resource": "arn:aws:iam::*:instance-profile/crte-bloodhound-*"
+    }
+  ]
+}

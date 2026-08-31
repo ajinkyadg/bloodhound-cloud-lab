@@ -1,0 +1,87 @@
+#!/bin/bash
+# Runs once, on first boot only (cloud-init semantics). Everything here must
+# leave the instance in a state where a systemd unit brings BloodHound back up
+# on every subsequent boot (i.e. every stop -> start cycle), without this
+# script re-running.
+set -euxo pipefail
+
+# --- Find and mount the data EBS volume (idempotent: safe on every first boot) ---
+ROOT_DEV=$(findmnt -n -o SOURCE / | sed -E 's/p?[0-9]+$//')
+DATA_DEV=""
+for d in /dev/nvme?n1; do
+  if [ "$d" != "$ROOT_DEV" ]; then
+    DATA_DEV="$d"
+  fi
+done
+
+if [ -z "$DATA_DEV" ]; then
+  echo "Could not find data EBS device, aborting" >&2
+  exit 1
+fi
+
+if ! blkid "$DATA_DEV" >/dev/null 2>&1; then
+  mkfs.ext4 -F "$DATA_DEV"
+fi
+
+mkdir -p /data
+DATA_UUID=$(blkid -s UUID -o value "$DATA_DEV")
+grep -q "$DATA_UUID" /etc/fstab || echo "UUID=$DATA_UUID /data ext4 defaults,nofail 0 2" >> /etc/fstab
+mount -a
+mkdir -p /data/postgres /data/neo4j
+
+# --- Install Docker ---
+apt-get update -y
+apt-get install -y ca-certificates curl gnupg openssl
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+  > /etc/apt/sources.list.d/docker.list
+apt-get update -y
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+systemctl enable docker
+
+# --- Generate BloodHound DB credentials once, persisted on the root volume ---
+mkdir -p /opt/bloodhound
+if [ ! -f /opt/bloodhound/.env ]; then
+  {
+    echo "BLOODHOUND_POSTGRES_PASSWORD=$(openssl rand -hex 24)"
+    echo "BLOODHOUND_NEO4J_PASSWORD=$(openssl rand -hex 24)"
+  } > /opt/bloodhound/.env
+  chmod 600 /opt/bloodhound/.env
+fi
+# shellcheck disable=SC1091
+source /opt/bloodhound/.env
+
+cat > /opt/bloodhound/docker-compose.yml <<'EOF'
+${docker_compose_yml}
+EOF
+# Substitute the generated secrets into the compose file (kept out of Terraform state).
+sed -i "s/__BLOODHOUND_POSTGRES_PASSWORD__/$BLOODHOUND_POSTGRES_PASSWORD/g; s/__BLOODHOUND_NEO4J_PASSWORD__/$BLOODHOUND_NEO4J_PASSWORD/g" /opt/bloodhound/docker-compose.yml
+
+cat > /opt/bloodhound/Caddyfile <<'EOF'
+${caddyfile}
+EOF
+
+# --- systemd unit: brings the stack up on every boot, including after stop/start ---
+cat > /etc/systemd/system/bloodhound.service <<'EOF'
+[Unit]
+Description=BloodHound CE docker-compose stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/bloodhound
+ExecStart=/usr/bin/docker compose up -d
+ExecStop=/usr/bin/docker compose down
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable bloodhound.service
+systemctl start bloodhound.service

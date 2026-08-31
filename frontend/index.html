@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BloodHound Lab</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="card">
+    <h1>BloodHound Lab</h1>
+
+    <section id="logged-out" hidden>
+      <p>Sign in to launch your BloodHound instance.</p>
+      <button id="login-btn">Log in</button>
+    </section>
+
+    <section id="logged-in" hidden>
+      <p class="state" id="state-text">Checking instance state&hellip;</p>
+      <button id="launch-btn" hidden>Launch BloodHound</button>
+      <a id="open-link" class="button" href="#" target="_blank" rel="noopener" hidden>Open BloodHound</a>
+      <button id="stop-btn" class="secondary" hidden>Log out &amp; stop now</button>
+      <p class="hint">Idle for too long and this stops itself automatically.</p>
+    </section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
