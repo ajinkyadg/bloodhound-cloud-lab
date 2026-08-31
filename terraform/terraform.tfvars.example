@@ -3,6 +3,12 @@
 
 admin_email = "you@example.com"
 
+# New/Free-Tier-restricted AWS accounts may reject the default instance_type
+# with "InvalidParameterCombination: ... not eligible for Free Tier". If so,
+# run: aws ec2 describe-instance-types --filters Name=free-tier-eligible,Values=true
+# and pick one from that list, e.g.:
+# instance_type = "m7i-flex.large"
+
 # Optional overrides (defaults shown):
 # aws_region           = "us-east-1"
 # project_name         = "crte-bloodhound"
