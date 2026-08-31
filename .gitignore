@@ -7,3 +7,5 @@ terraform/build/
 frontend/config.js
 *.tar.gz
 .DS_Store
+.terraform.tfstate.lock.info
+*.tfstate*
