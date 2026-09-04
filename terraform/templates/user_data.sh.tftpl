@@ -112,3 +112,25 @@ EOF
 systemctl daemon-reload
 systemctl enable bloodhound.service
 systemctl start bloodhound.service
+
+# --- Capture BloodHound's own auto-generated admin password, ONCE ---
+# "Initial Password Set To" only ever appears in the logs on this very first
+# boot, when the admin account doesn't exist yet in the (persisted) database -
+# every boot after this one has no such line. Persist it now so
+# terraform/lambda/credentials/handler.py can keep returning it reliably
+# across every future stop/start, instead of re-grepping live logs each time.
+if ! grep -q BLOODHOUND_ADMIN_PASSWORD /opt/bloodhound/.env 2>/dev/null; then
+  INITIAL_PASSWORD=""
+  for i in $(seq 1 60); do
+    INITIAL_PASSWORD=$(docker compose -f /opt/bloodhound/docker-compose.yml logs bloodhound 2>/dev/null \
+      | grep -oE "Initial Password Set To:\s*\S+" | awk '{print $NF}' | tail -1 || true)
+    [ -n "$INITIAL_PASSWORD" ] && break
+    sleep 5
+  done
+  if [ -n "$INITIAL_PASSWORD" ]; then
+    {
+      echo "BLOODHOUND_ADMIN_USERNAME=admin"
+      echo "BLOODHOUND_ADMIN_PASSWORD=$INITIAL_PASSWORD"
+    } >> /opt/bloodhound/.env
+  fi
+fi

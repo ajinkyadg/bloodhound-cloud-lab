@@ -9,11 +9,16 @@ ssm = boto3.client("ssm")
 INSTANCE_ID = os.environ["INSTANCE_ID"]
 
 # Reuses the same SSM RunCommand pattern as scripts/final-export.sh - no SSH,
-# no persistent secret storage. The password only ever exists transiently in
-# this response; nothing is written to disk or a database on our side.
+# nothing new added to our own AWS-side storage.
+#
+# Reads /opt/bloodhound/.env rather than grepping live container logs: the
+# "Initial Password Set To" line only ever appears on the very first boot,
+# when the admin account doesn't exist yet in the (persisted) database. Every
+# boot after that has no such line - user_data.sh.tftpl captures it once, on
+# first boot, into .env precisely so this keeps working across every
+# subsequent stop/start.
 COMMANDS = [
-    "cd /opt/bloodhound",
-    "docker compose logs bloodhound 2>/dev/null | grep -i password | tail -5",
+    "grep -E '^BLOODHOUND_ADMIN_(USERNAME|PASSWORD)=' /opt/bloodhound/.env",
 ]
 
 
@@ -44,9 +49,10 @@ def handler(event, context):
     output = result.get("StandardOutputContent", "").strip()
     if not output:
         output = (
-            "No password line found in the container logs. Either BloodHound "
-            "hasn't finished starting yet, or the admin password was already "
-            "rotated after a first login (in which case use that new one)."
+            "No stored credentials found on the instance. Either BloodHound "
+            "hasn't finished its first boot yet, or you've since changed the "
+            "admin password yourself in BloodHound's UI (in which case use "
+            "that new one - this button only ever shows the original)."
         )
     return _response(200, {"output": output})
 
